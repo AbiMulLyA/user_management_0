@@ -2,21 +2,43 @@
 // PERTEMUAN 4: USER MODEL - DATA LAYER
 // ============================================================================
 //
-// MODEL extends ENTITY dan menambahkan:
-// - fromJson(): parsing dari JSON API
-// - toJson(): konversi ke JSON untuk POST
+// 🔄 PERUBAHAN DARI PERTEMUAN 3:
+// ============================================================================
+// Di Pertemuan 3, UserModel adalah class standalone dengan semua property.
+// Di Pertemuan 4, UserModel EXTENDS UserEntity.
 //
-// LISKOV SUBSTITUTION PRINCIPLE:
-// - UserModel bisa digunakan di mana saja UserEntity bisa digunakan
-// - Cubit/UseCase bekerja dengan UserEntity
-// - DataSource bekerja dengan UserModel (untuk parsing)
+// KODE LAMA (Pertemuan 3):
+// -----------------------------------------------------------------
+// class UserModel {
+//   final String id;
+//   final String name;
+//   final String email;
+//   ...
 //
+//   factory UserModel.fromJson(Map<String, dynamic> json) { ... }
+//   Map<String, dynamic> toJson() { ... }
+// }
+//
+// SEKARANG (Pertemuan 4):
+// UserModel extends UserEntity, hanya tambah fromJson/toJson
 // ============================================================================
 
 import '../../domain/entities/user_entity.dart';
 
 /// Model User - dengan parsing JSON
+///
+/// 🔄 PERUBAHAN:
+/// Pertemuan 3: class UserModel { properties... }
+/// Pertemuan 4: class UserModel extends UserEntity { }
 class UserModel extends UserEntity {
+  // =========================================================================
+  // 📌 PERHATIKAN: TIDAK ADA property declarations!
+  // =========================================================================
+  // Di Pertemuan 3, semua property dideklarasikan di sini.
+  // Di Pertemuan 4, property sudah ada di UserEntity (parent class).
+  // Kita hanya perlu call super constructor.
+  // =========================================================================
+
   const UserModel({
     required super.id,
     required super.name,
@@ -27,6 +49,9 @@ class UserModel extends UserEntity {
   });
 
   /// Factory method untuk parsing JSON dari API
+  ///
+  /// 📌 SAMA seperti Pertemuan 3, tapi sekarang return UserModel
+  /// yang extends UserEntity
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['id'] ?? '',
@@ -39,6 +64,8 @@ class UserModel extends UserEntity {
   }
 
   /// Method untuk konversi ke JSON (untuk POST request)
+  ///
+  /// 📌 SAMA seperti Pertemuan 3
   Map<String, dynamic> toJson() {
     return {
       'name': name,

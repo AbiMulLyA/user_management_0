@@ -1,16 +1,21 @@
 // ============================================================================
-// PERTEMUAN 3: USER CUBIT - DENGAN REPOSITORY
+// PERTEMUAN 3: USER CUBIT - SEKARANG MENGGUNAKAN REPOSITORY
 // ============================================================================
 //
-// PERBEDAAN DARI PERTEMUAN 2:
-// -------------------------------------------------------------------------
-// Pertemuan 2: Cubit langsung panggil HTTP
-// Pertemuan 3: Cubit panggil Repository (tidak tahu tentang HTTP)
+// 🔄 PERUBAHAN DARI PERTEMUAN 2:
+// ============================================================================
+// Di Pertemuan 2, Cubit langsung melakukan HTTP request.
+// Di Pertemuan 3, HTTP request DIPINDAHKAN ke DataSource.
+// Cubit sekarang hanya panggil Repository.
 //
-// KEUNTUNGAN:
-// 1. Cubit lebih fokus ke state management
-// 2. Mudah testing dengan mock Repository
-// 3. Separation of concerns lebih jelas
+// YANG DIPINDAHKAN:
+// - http.get()      → data/datasources/user_remote_data_source.dart
+// - json.decode()   → data/datasources/user_remote_data_source.dart
+// - URL API         → config/api_config.dart
+//
+// YANG BARU:
+// - Repository sebagai dependency
+// - Method searchUsers(), filterByCity(), addUser()
 //
 // ============================================================================
 
@@ -21,20 +26,50 @@ import '../data/repositories/user_repository.dart';
 import 'user_state.dart';
 
 /// Cubit untuk manage state user
+///
+/// 🔄 PERUBAHAN: Sekarang menerima Repository, bukan HTTP Client langsung
 class UserCubit extends Cubit<UserState> {
-  // -------------------------------------------------------------------------
-  // DEPENDENCY: Repository
-  // -------------------------------------------------------------------------
-  // Cubit bergantung pada Repository (abstract class)
-  // Tidak tahu implementasi konkritnya (bisa real API atau mock)
-  // -------------------------------------------------------------------------
+  // =========================================================================
+  // 🆕 BARU DI PERTEMUAN 3: Dependency pada Repository
+  // =========================================================================
+  // Di Pertemuan 2, tidak ada dependency. Cubit langsung panggil HTTP.
+  // Sekarang Cubit bergantung pada Repository (abstract class).
+  // =========================================================================
   final UserRepository repository;
 
   /// Constructor dengan dependency injection
+  ///
+  /// 🔄 PERUBAHAN:
+  /// Pertemuan 2: UserCubit() : super(UserInitial());
+  /// Pertemuan 3: UserCubit({required this.repository}) : super(UserInitial());
   UserCubit({required this.repository}) : super(UserInitial());
 
   // =========================================================================
-  // LOAD DATA
+  // 📌 JEJAK PERTEMUAN 2: loadUsers() → loadData()
+  // =========================================================================
+  // Method ini ada di Pertemuan 2, tapi ISINYA BERUBAH.
+  // HTTP request DIPINDAHKAN ke: data/datasources/user_remote_data_source.dart
+  //
+  // KODE LAMA (Pertemuan 2):
+  // -----------------------------------------------------------------
+  // Future<void> loadUsers() async {
+  //   emit(UserLoading());
+  //   try {
+  //     final response = await http.get(           // ← DIPINDAHKAN
+  //       Uri.parse('https://627e360ab75a25d3f3b37d5a.mockapi.io/...'),
+  //     );
+  //     if (response.statusCode == 200) {
+  //       final List<dynamic> jsonList = json.decode(response.body); // ← DIPINDAHKAN
+  //       final users = jsonList.map((json) => UserModel.fromJson(json)).toList();
+  //       emit(UserLoaded(users: users));
+  //     }
+  //   } catch (e) {
+  //     emit(UserError(message: e.toString()));
+  //   }
+  // }
+  //
+  // SEKARANG (Pertemuan 3):
+  // Cukup panggil repository.getUsers() - tidak perlu tahu detail HTTP!
   // =========================================================================
 
   /// Load users dan cities dari repository
@@ -42,11 +77,14 @@ class UserCubit extends Cubit<UserState> {
     emit(UserLoading());
 
     try {
-      // ---------------------------------------------------------------------
-      // PARALLEL REQUEST dengan Future.wait
-      // ---------------------------------------------------------------------
-      // Lebih cepat daripada await satu-satu
-      // ---------------------------------------------------------------------
+      // =====================================================================
+      // 🔄 PERUBAHAN UTAMA:
+      // Dulu (P2): final response = await http.get(...) + json.decode()
+      // Sekarang:  final users = await repository.getUsers()
+      //
+      // Cubit tidak perlu tahu tentang HTTP, URL, atau JSON parsing!
+      // Semua itu sekarang ditangani oleh DataSource.
+      // =====================================================================
       final results = await Future.wait([
         repository.getUsers(),
         repository.getCities(),
@@ -66,10 +104,11 @@ class UserCubit extends Cubit<UserState> {
   }
 
   // =========================================================================
-  // SEARCH USERS
+  // 🆕 METHOD BARU DI PERTEMUAN 3 (tidak ada di Pertemuan 2)
   // =========================================================================
 
   /// Filter users berdasarkan nama
+  /// 🆕 BARU: Tidak ada di Pertemuan 2
   void searchUsers(String query) {
     if (state is UserLoaded) {
       final currentState = state as UserLoaded;
@@ -78,7 +117,6 @@ class UserCubit extends Cubit<UserState> {
         return user.name.toLowerCase().contains(query.toLowerCase());
       }).toList();
 
-      // Apply city filter juga
       final finalFiltered =
           _applyCityFilter(filtered, currentState.selectedCity);
 
@@ -89,23 +127,18 @@ class UserCubit extends Cubit<UserState> {
     }
   }
 
-  // =========================================================================
-  // FILTER BY CITY
-  // =========================================================================
-
   /// Filter users berdasarkan kota
+  /// 🆕 BARU: Tidak ada di Pertemuan 2
   void filterByCity(String? city) {
     if (state is UserLoaded) {
       final currentState = state as UserLoaded;
 
-      // Apply search filter dulu
       var filtered = currentState.users.where((user) {
         return user.name
             .toLowerCase()
             .contains(currentState.searchQuery.toLowerCase());
       }).toList();
 
-      // Apply city filter
       filtered = _applyCityFilter(filtered, city);
 
       emit(currentState.copyWith(
@@ -115,15 +148,11 @@ class UserCubit extends Cubit<UserState> {
     }
   }
 
-  // =========================================================================
-  // ADD USER
-  // =========================================================================
-
   /// Tambah user baru
+  /// 🆕 BARU: Tidak ada di Pertemuan 2
   Future<void> addUser(UserModel user) async {
     try {
       await repository.addUser(user);
-      // Reload data setelah berhasil
       await loadData();
     } catch (e) {
       emit(UserError(message: e.toString()));

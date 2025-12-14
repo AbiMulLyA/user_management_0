@@ -2,26 +2,14 @@
 // PERTEMUAN 2: USER CUBIT - STATE MANAGEMENT
 // ============================================================================
 //
-// CUBIT adalah state management dari package flutter_bloc.
+// 🆕 FILE BARU DI PERTEMUAN 2!
+// ============================================================================
+// File ini TIDAK ADA di Pertemuan 1.
+// Di Pertemuan 1, semua logic ada di dalam user_list_page.dart
 //
-// PERBEDAAN STATEFULWIDGET vs CUBIT:
-// -------------------------------------------------------------------------
-// StatefulWidget (Pertemuan 1):
-// - State terikat dengan 1 widget
-// - setState() untuk update UI
-// - Sulit share state ke widget lain
-//
-// Cubit (Pertemuan 2):
-// - State terpisah dari widget
-// - emit() untuk update state
-// - Mudah share state via BlocProvider
-// - Lebih mudah di-test
-//
-// MASIH BELUM IDEAL:
-// -------------------------------------------------------------------------
-// - HTTP request masih langsung di Cubit
-// - Seharusnya ada Repository sebagai perantara
-// - Akan diperbaiki di Pertemuan 3
+// Di Pertemuan 2, kita MEMINDAHKAN logic ke sini:
+// - fetchUsers() dari Page → loadUsers() di Cubit
+// - State management dari setState() → emit()
 //
 // ============================================================================
 
@@ -33,48 +21,45 @@ import 'user_state.dart';
 
 /// Cubit untuk manage state user
 ///
-/// Cubit<UserState> artinya:
-/// - Cubit ini mengelola state bertipe UserState
-/// - emit() hanya bisa menerima UserState atau turunannya
+/// 🆕 BARU: Class ini tidak ada di Pertemuan 1
+/// Semua logic yang dulu di Page, sekarang di sini.
 class UserCubit extends Cubit<UserState> {
   // -------------------------------------------------------------------------
   // CONSTRUCTOR
   // -------------------------------------------------------------------------
-  // super(UserInitial()) -> Set state awal ke UserInitial
-  // Artinya saat Cubit dibuat, state-nya adalah UserInitial
+  // super(UserInitial()) → Set state awal
+  // 🔄 Ini menggantikan: users = [], isLoading = false, errorMessage = null
   // -------------------------------------------------------------------------
 
   UserCubit() : super(UserInitial());
 
   // =========================================================================
-  // METHOD: loadUsers
+  // 📌 JEJAK DARI PERTEMUAN 1: fetchUsers() → loadUsers()
+  // =========================================================================
+  // Method ini DIPINDAHKAN dari: pages/user_list_page.dart
+  //
+  // PERUBAHAN:
+  // - Nama: fetchUsers() → loadUsers()
+  // - setState({isLoading: true}) → emit(UserLoading())
+  // - setState({users: data}) → emit(UserLoaded(users: data))
+  // - setState({errorMessage: e}) → emit(UserError(message: e))
   // =========================================================================
 
   /// Method untuk load data user dari API
   ///
-  /// ALUR:
-  /// 1. Emit UserLoading -> UI tampilkan loading
-  /// 2. Fetch data dari API
-  /// 3. Parse response
-  /// 4. Emit UserLoaded atau UserError
-  ///
-  /// ⚠️ CATATAN:
-  /// HTTP request masih di sini. Di Pertemuan 3, kita akan pindahkan
-  /// ke Repository agar Cubit tidak perlu tahu tentang HTTP/API.
+  /// 🔄 DULU di Pertemuan 1 bernama fetchUsers() dan ada di Page
   Future<void> loadUsers() async {
     // -----------------------------------------------------------------------
-    // LANGKAH 1: Emit Loading State
-    // -----------------------------------------------------------------------
-    // emit() adalah method dari Cubit untuk mengubah state
-    // Setelah emit(), semua BlocBuilder akan rebuild
+    // 🔄 PERUBAHAN:
+    // Dulu: setState(() { isLoading = true; errorMessage = null; });
+    // Sekarang: emit(UserLoading());
     // -----------------------------------------------------------------------
     emit(UserLoading());
 
     try {
       // ---------------------------------------------------------------------
-      // LANGKAH 2: Fetch Data dari API
-      // ---------------------------------------------------------------------
-      // ⚠️ Masih hardcode URL di sini - akan diperbaiki nanti
+      // ⚠️ HTTP request masih di sini (belum ideal)
+      // Di Pertemuan 3, ini akan dipindahkan ke DataSource
       // ---------------------------------------------------------------------
       final response = await http.get(
         Uri.parse(
@@ -82,16 +67,15 @@ class UserCubit extends Cubit<UserState> {
         headers: {'Content-Type': 'application/json'},
       );
 
-      // ---------------------------------------------------------------------
-      // LANGKAH 3: Cek Status dan Parse Response
-      // ---------------------------------------------------------------------
       if (response.statusCode == 200) {
         final List<dynamic> jsonList = json.decode(response.body);
         final List<UserModel> users =
             jsonList.map((json) => UserModel.fromJson(json)).toList();
 
         // -------------------------------------------------------------------
-        // LANGKAH 4: Emit Loaded State dengan Data
+        // 🔄 PERUBAHAN:
+        // Dulu: setState(() { this.users = users; isLoading = false; });
+        // Sekarang: emit(UserLoaded(users: users));
         // -------------------------------------------------------------------
         emit(UserLoaded(users: users));
       } else {
@@ -99,20 +83,20 @@ class UserCubit extends Cubit<UserState> {
             message: 'Gagal memuat data. Status: ${response.statusCode}'));
       }
     } catch (e) {
-      // Error handling
+      // ---------------------------------------------------------------------
+      // 🔄 PERUBAHAN:
+      // Dulu: setState(() { errorMessage = e.toString(); isLoading = false; });
+      // Sekarang: emit(UserError(message: e.toString()));
+      // ---------------------------------------------------------------------
       emit(UserError(message: 'Terjadi kesalahan: $e'));
     }
   }
 
   // =========================================================================
-  // METHOD: refreshUsers
+  // METHOD TAMBAHAN (tidak ada di Pertemuan 1)
   // =========================================================================
 
-  /// Method untuk refresh data (sama dengan loadUsers)
-  ///
-  /// Dipanggil saat:
-  /// - Pull-to-refresh
-  /// - Tap tombol refresh
+  /// Method untuk refresh data
   Future<void> refreshUsers() async {
     await loadUsers();
   }

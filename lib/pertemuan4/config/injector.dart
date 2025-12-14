@@ -1,24 +1,26 @@
 // ============================================================================
-// PERTEMUAN 4: DEPENDENCY INJECTION (INJECTOR)
+// PERTEMUAN 4: INJECTOR - DEPENDENCY INJECTION CONTAINER
 // ============================================================================
 //
-// DEPENDENCY INJECTION adalah teknik dimana object menerima dependencies-nya
-// dari luar, bukan membuat sendiri di dalamnya.
+// 🆕 FILE BARU DI PERTEMUAN 4!
+// ============================================================================
+// File ini TIDAK ADA di Pertemuan 3.
 //
-// ANALOGI:
-// -------------------------------------------------------------------------
-// ❌ Tanpa DI: Chef membuat pisau sendiri sebelum masak
-// ✅ Dengan DI: Chef diberi pisau oleh restoran
+// Di Pertemuan 3, DI dilakukan secara manual di main.dart:
+//   final httpClient = http.Client();
+//   final dataSource = UserRemoteDataSourceImpl(client: httpClient);
+//   final repository = UserRepositoryImpl(dataSource: dataSource);
+//   final cubit = UserCubit(repository: repository);
 //
-// KENAPA PAKAI SINGLETON?
-// -------------------------------------------------------------------------
-// Singleton = hanya ada 1 instance dalam aplikasi
-// Semua bagian aplikasi menggunakan Cubit yang SAMA
+// Di Pertemuan 4, kode tersebut DIPINDAHKAN ke sini:
+// - Semua dependencies dibuat dalam Injector class
+// - Menggunakan Singleton Pattern
+// - main.dart tinggal panggil Injector().init()
 //
-// URUTAN PEMBUATAN (PENTING!):
-// -------------------------------------------------------------------------
-// http.Client → DataSource → Repository → UseCase → Cubit
-// Tidak boleh terbalik karena ada dependency antar object
+// KEUNTUNGAN:
+// - Dependencies terpusat di satu tempat
+// - Mudah diganti untuk testing
+// - Lebih clean dan terorganisir
 //
 // ============================================================================
 
@@ -32,9 +34,14 @@ import '../features/user/domain/usecases/get_cities_usecase.dart';
 import '../features/user/presentation/bloc/user_cubit.dart';
 
 /// Dependency Injection Container
+///
+/// 📌 JEJAK PERTEMUAN 3:
+/// Kode ini DIPINDAHKAN dari main.dart
 class Injector {
   // =========================================================================
   // SINGLETON PATTERN
+  // =========================================================================
+  // 🆕 BARU: Menggunakan singleton agar hanya ada 1 instance
   // =========================================================================
   static final Injector _instance = Injector._internal();
   factory Injector() => _instance;
@@ -46,14 +53,27 @@ class Injector {
   late http.Client httpClient;
   late UserRemoteDataSource userRemoteDataSource;
   late UserRepository userRepository;
+  // 🆕 BARU: Use Cases (tidak ada di Pertemuan 3)
   late GetUsersUseCase getUsersUseCase;
   late AddUserUseCase addUserUseCase;
   late GetCitiesUseCase getCitiesUseCase;
   late UserCubit userCubit;
 
   // =========================================================================
-  // INIT METHOD
+  // 📌 JEJAK PERTEMUAN 3: Kode ini DULU ada di main()
   // =========================================================================
+  // KODE LAMA di main.dart (Pertemuan 3):
+  // -----------------------------------------------------------------
+  // void main() {
+  //   final httpClient = http.Client();
+  //   final userDataSource = UserRemoteDataSourceImpl(client: httpClient);
+  //   final userRepository = UserRepositoryImpl(dataSource: userDataSource);
+  //   final userCubit = UserCubit(repository: userRepository);
+  //   runApp(MyApp(userCubit: userCubit));
+  // }
+  //
+  // SEKARANG: Dipindahkan ke method init() di bawah ini
+  // -----------------------------------------------------------------
   void init() {
     // LANGKAH 1: HTTP Client
     httpClient = http.Client();
@@ -64,12 +84,20 @@ class Injector {
     // LANGKAH 3: Repository
     userRepository = UserRepositoryImpl(remoteDataSource: userRemoteDataSource);
 
-    // LANGKAH 4: Use Cases
+    // =====================================================================
+    // 🆕 LANGKAH 4 BARU: Use Cases (tidak ada di Pertemuan 3)
+    // =====================================================================
+    // Di Pertemuan 3, Cubit langsung panggil Repository.
+    // Di Pertemuan 4, ada Use Case sebagai perantara.
+    // =====================================================================
     getUsersUseCase = GetUsersUseCase(repository: userRepository);
     addUserUseCase = AddUserUseCase(repository: userRepository);
     getCitiesUseCase = GetCitiesUseCase(repository: userRepository);
 
     // LANGKAH 5: Cubit
+    // 🔄 PERUBAHAN:
+    // Pertemuan 3: UserCubit(repository: repository)
+    // Pertemuan 4: UserCubit(getUsersUseCase: ..., addUserUseCase: ...)
     userCubit = UserCubit(
       getUsersUseCase: getUsersUseCase,
       addUserUseCase: addUserUseCase,

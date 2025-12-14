@@ -2,23 +2,14 @@
 // PERTEMUAN 2: MENAMBAHKAN STATE MANAGEMENT DENGAN CUBIT
 // ============================================================================
 //
-// Pada pertemuan ini, kita mulai memisahkan:
-// - STATE MANAGEMENT (logic) dari UI
+// 🔄 PERUBAHAN DARI PERTEMUAN 1:
+// ============================================================================
+// Di Pertemuan 1, main.dart sangat sederhana - langsung ke Page.
+// Di Pertemuan 2, kita menambahkan BlocProvider untuk menyediakan Cubit.
 //
-// PERBEDAAN DARI PERTEMUAN 1:
-// -------------------------------------------------------------------------
-// Pertemuan 1: Semua logic di dalam Page (StatefulWidget)
-// Pertemuan 2: Logic dipindahkan ke Cubit, Page hanya untuk UI
-//
-// KEUNTUNGAN:
-// 1. UI lebih bersih (hanya fokus tampilan)
-// 2. Logic bisa di-test terpisah
-// 3. State bisa di-share antar halaman
-//
-// MASIH BELUM IDEAL:
-// - HTTP request masih di dalam Cubit
-// - Belum ada Repository pattern
-// - Akan diperbaiki di Pertemuan 3
+// YANG BARU:
+// - import flutter_bloc
+// - BlocProvider wrapper
 //
 // ============================================================================
 
@@ -50,20 +41,30 @@ class MyApp extends StatelessWidget {
           elevation: 2,
         ),
       ),
-      // -----------------------------------------------------------------------
-      // BLOCPROVIDER
-      // -----------------------------------------------------------------------
-      // BlocProvider menyediakan Cubit ke seluruh widget tree di bawahnya.
-      // Semua widget child bisa mengakses UserCubit melalui:
-      // - context.read<UserCubit>()  -> untuk memanggil method
-      // - context.watch<UserCubit>() -> untuk listen changes
-      // - BlocBuilder -> untuk rebuild UI saat state berubah
-      // -----------------------------------------------------------------------
+      // =====================================================================
+      // 🆕 BARU DI PERTEMUAN 2: BlocProvider
+      // =====================================================================
+      //
+      // 📌 JEJAK PERTEMUAN 1:
+      // Dulu langsung: home: const UserListPage()
+      //
+      // Sekarang dibungkus dengan BlocProvider:
+      // - BlocProvider membuat instance UserCubit
+      // - UserCubit bisa diakses dari semua widget di bawahnya
+      // - Menggunakan context.read<UserCubit>() atau BlocBuilder
+      //
+      // =====================================================================
       home: BlocProvider(
         // create: callback untuk membuat instance Cubit
+        // 🆕 Di sini Cubit dibuat, bukan di dalam Page seperti dulu
         create: (context) => UserCubit(),
         child: const UserListPage(),
       ),
+      // =====================================================================
+      // 📌 PERBANDINGAN:
+      // Pertemuan 1: home: const UserListPage()
+      // Pertemuan 2: home: BlocProvider(create: ..., child: UserListPage())
+      // =====================================================================
     );
   }
 }

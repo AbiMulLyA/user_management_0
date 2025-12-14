@@ -2,40 +2,18 @@
 // PERTEMUAN 4: CLEAN ARCHITECTURE LENGKAP
 // ============================================================================
 //
-// Pada pertemuan ini, kita mengimplementasikan Clean Architecture LENGKAP:
-// - Domain Layer: Entity, Use Case, Repository Interface
-// - Data Layer: Model, DataSource, Repository Implementation
-// - Presentation Layer: Cubit, State, Page, Widget
-// - Config: API Config, Dependency Injection
+// 🔄 PERUBAHAN DARI PERTEMUAN 3:
+// ============================================================================
+// Di Pertemuan 3, DI dilakukan manual di main():
+//   final httpClient = http.Client();
+//   final dataSource = ...
+//   final repository = ...
+//   final cubit = ...
 //
-// ARSITEKTUR 3 LAYER:
-// =========================================================================
+// Di Pertemuan 4, DI DIPINDAHKAN ke Injector class:
+//   Injector().init();
 //
-//   ┌─────────────────────────────────────────────────────────────────┐
-//   │  PRESENTATION LAYER                                             │
-//   │  Pages, Widgets, Cubit, State                                   │
-//   │  Fokus: UI dan State Management                                 │
-//   └────────────────────────────┬────────────────────────────────────┘
-//                                │
-//                                ▼
-//   ┌─────────────────────────────────────────────────────────────────┐
-//   │  DOMAIN LAYER                                                   │
-//   │  Entity, Use Case, Repository Interface (Abstract)             │
-//   │  Fokus: Business Logic                                          │
-//   │  ⭐ TIDAK BERGANTUNG PADA LAYER LAIN                            │
-//   └────────────────────────────┬────────────────────────────────────┘
-//                                │
-//                                ▼
-//   ┌─────────────────────────────────────────────────────────────────┐
-//   │  DATA LAYER                                                     │
-//   │  Model, DataSource, Repository Implementation                   │
-//   │  Fokus: Akses Data (API, Database)                              │
-//   └─────────────────────────────────────────────────────────────────┘
-//
-// DEPENDENCY RULE:
-// - Layer luar boleh tahu layer dalam
-// - Layer dalam TIDAK BOLEH tahu layer luar
-// - Domain Layer adalah pusat, tidak tahu Presentation atau Data
+// main.dart sekarang sangat bersih dan fokus!
 //
 // ============================================================================
 
@@ -46,19 +24,40 @@ import 'features/user/presentation/pages/user_list_page.dart';
 
 /// Entry point aplikasi
 void main() {
-  // -------------------------------------------------------------------------
-  // INIT DEPENDENCY INJECTION
-  // -------------------------------------------------------------------------
-  // Semua dependencies dibuat di Injector
-  // Menggunakan Singleton pattern
-  // -------------------------------------------------------------------------
+  // =========================================================================
+  // 📌 JEJAK PERTEMUAN 3: DI dipindahkan ke Injector
+  // =========================================================================
+  //
+  // KODE LAMA (Pertemuan 3):
+  // -----------------------------------------------------------------
+  // void main() {
+  //   final httpClient = http.Client();
+  //   final userDataSource = UserRemoteDataSourceImpl(client: httpClient);
+  //   final userRepository = UserRepositoryImpl(dataSource: userDataSource);
+  //   final userCubit = UserCubit(repository: userRepository);
+  //   runApp(MyApp(userCubit: userCubit));
+  // }
+  //
+  // SEKARANG (Pertemuan 4):
+  // Semua sudah di-handle oleh Injector. Main tinggal panggil init().
+  // =========================================================================
   Injector().init();
 
   runApp(const MyApp());
 }
 
 /// Root widget aplikasi
+///
+/// 🔄 PERUBAHAN:
+/// Pertemuan 3: MyApp menerima userCubit dari constructor
+/// Pertemuan 4: MyApp mengambil userCubit dari Injector
 class MyApp extends StatelessWidget {
+  // =========================================================================
+  // 📌 PERHATIKAN: Tidak ada constructor parameter!
+  // =========================================================================
+  // Di Pertemuan 3: const MyApp({required this.userCubit})
+  // Di Pertemuan 4: const MyApp() - cubit diambil dari Injector
+  // =========================================================================
   const MyApp({super.key});
 
   @override
@@ -91,7 +90,13 @@ class MyApp extends StatelessWidget {
         ),
       ),
       home: BlocProvider(
-        // Cubit diambil dari Injector
+        // =====================================================================
+        // 🔄 PERUBAHAN:
+        // Pertemuan 3: BlocProvider.value(value: userCubit, ...)
+        // Pertemuan 4: BlocProvider(create: (_) => Injector().userCubit, ...)
+        //
+        // Cubit diambil dari Injector singleton, bukan dari constructor
+        // =====================================================================
         create: (context) => Injector().userCubit,
         child: const UserListPage(),
       ),

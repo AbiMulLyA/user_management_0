@@ -2,19 +2,23 @@
 // PERTEMUAN 3: DATA SOURCE - KOMUNIKASI DENGAN API
 // ============================================================================
 //
-// DATA SOURCE adalah class yang bertanggung jawab untuk:
-// 1. Mengirim HTTP request ke API
-// 2. Menerima response dari API
-// 3. Mengkonversi JSON menjadi Model
+// 🆕 FILE BARU DI PERTEMUAN 3!
+// ============================================================================
+// File ini TIDAK ADA di Pertemuan 2.
 //
-// KENAPA DIPISAHKAN DARI REPOSITORY?
-// -------------------------------------------------------------------------
-// - DataSource: fokus ke HOW (bagaimana ambil data - HTTP, GraphQL, dll)
-// - Repository: fokus ke WHAT (apa yang diambil - users, cities, dll)
+// Di Pertemuan 2, HTTP request ada di dalam Cubit:
+//   final response = await http.get(Uri.parse('...'));
+//   final jsonList = json.decode(response.body);
 //
-// Dengan memisahkan:
-// - Bisa ganti implementasi DataSource tanpa mengubah Repository
-// - Bisa mock DataSource untuk testing
+// Di Pertemuan 3, HTTP request DIPINDAHKAN ke sini:
+// - Semua logic HTTP ada di DataSource
+// - Cubit hanya panggil repository.getUsers()
+// - Repository panggil dataSource.getUsers()
+//
+// KEUNTUNGAN:
+// - Cubit tidak perlu tahu tentang HTTP
+// - Mudah mock untuk testing
+// - Bisa ganti implementasi (misal: GraphQL) tanpa ubah Cubit
 //
 // ============================================================================
 
@@ -29,18 +33,9 @@ import '../models/city_model.dart';
 // =============================================================================
 
 /// Interface untuk Remote Data Source
-///
-/// Abstract class mendefinisikan KONTRAK:
-/// - Method apa saja yang harus ada
-/// - Return type yang diharapkan
 abstract class UserRemoteDataSource {
-  /// Get semua user dari API
   Future<List<UserModel>> getUsers();
-
-  /// Tambah user baru ke API
   Future<UserModel> addUser(UserModel user);
-
-  /// Get semua kota dari API
   Future<List<CityModel>> getCities();
 }
 
@@ -48,22 +43,38 @@ abstract class UserRemoteDataSource {
 // IMPLEMENTATION CLASS
 // =============================================================================
 
-/// Implementasi konkrit dari UserRemoteDataSource
+/// Implementasi Remote Data Source
+///
+/// 📌 KODE INI DIPINDAHKAN DARI: bloc/user_cubit.dart (Pertemuan 2)
 class UserRemoteDataSourceImpl implements UserRemoteDataSource {
   /// HTTP Client untuk request
+  /// 🆕 BARU: Di-inject dari luar (Dependency Injection)
   final http.Client client;
 
-  /// Constructor dengan dependency injection
   UserRemoteDataSourceImpl({required this.client});
 
-  // -------------------------------------------------------------------------
-  // GET USERS
-  // -------------------------------------------------------------------------
+  // =========================================================================
+  // 📌 JEJAK PERTEMUAN 2: Kode ini DULU ada di UserCubit.loadUsers()
+  // =========================================================================
+  // KODE LAMA di UserCubit (Pertemuan 2):
+  // -----------------------------------------------------------------
+  // final response = await http.get(
+  //   Uri.parse('https://627e360ab75a25d3f3b37d5a.mockapi.io/api/v1/accurate/user'),
+  //   headers: {'Content-Type': 'application/json'},
+  // );
+  // if (response.statusCode == 200) {
+  //   final List<dynamic> jsonList = json.decode(response.body);
+  //   final users = jsonList.map((json) => UserModel.fromJson(json)).toList();
+  // }
+  //
+  // SEKARANG: Kode tersebut ada di sini, di DataSource
+  // =========================================================================
   @override
   Future<List<UserModel>> getUsers() async {
     try {
+      // 🔄 Kode ini dulu di UserCubit.loadUsers()
       final response = await client.get(
-        Uri.parse(ApiConfig.userUrl),
+        Uri.parse(ApiConfig.userUrl), // 🆕 URL sekarang di ApiConfig
         headers: {'Content-Type': 'application/json'},
       );
 
@@ -78,9 +89,10 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // ADD USER
-  // -------------------------------------------------------------------------
+  // =========================================================================
+  // 🆕 METHOD BARU DI PERTEMUAN 3
+  // =========================================================================
+
   @override
   Future<UserModel> addUser(UserModel user) async {
     try {
@@ -100,9 +112,6 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // GET CITIES
-  // -------------------------------------------------------------------------
   @override
   Future<List<CityModel>> getCities() async {
     try {

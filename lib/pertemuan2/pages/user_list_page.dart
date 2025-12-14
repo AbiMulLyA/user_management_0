@@ -1,19 +1,17 @@
 // ============================================================================
-// PERTEMUAN 2: USER LIST PAGE - UI DENGAN BLOCBUILDER
+// PERTEMUAN 2: USER LIST PAGE - SEKARANG HANYA UI
 // ============================================================================
 //
-// PERBEDAAN DARI PERTEMUAN 1:
-// -------------------------------------------------------------------------
-// Pertemuan 1:
-// - StatefulWidget dengan setState()
-// - Logic (HTTP, state) di dalam page
-// - UI dan Logic campur jadi satu
+// 🔄 PERUBAHAN DARI PERTEMUAN 1:
+// ============================================================================
+// Di Pertemuan 1, file ini berisi SEMUA: UI + State + Logic + HTTP
+// Sekarang di Pertemuan 2, file ini HANYA berisi UI
 //
-// Pertemuan 2:
-// - StatelessWidget (karena state dikelola Cubit)
-// - BlocBuilder untuk reaktif terhadap state
-// - Page hanya fokus ke UI
-// - Logic sudah dipindahkan ke UserCubit
+// Yang DIPINDAHKAN:
+// - State variables    → bloc/user_state.dart
+// - fetchUsers()       → bloc/user_cubit.dart
+// - setState()         → diganti dengan emit() di Cubit
+// - StatefulWidget     → sekarang StatelessWidget
 //
 // ============================================================================
 
@@ -25,10 +23,60 @@ import '../models/user_model.dart';
 
 /// Halaman untuk menampilkan list user
 ///
-/// PERHATIKAN: Sekarang menggunakan StatelessWidget!
+/// 🔄 PERUBAHAN: Dulu StatefulWidget, sekarang StatelessWidget
 /// Karena state dikelola oleh Cubit, bukan oleh widget ini.
 class UserListPage extends StatelessWidget {
   const UserListPage({super.key});
+
+  // =========================================================================
+  // 📌 JEJAK PERTEMUAN 1 - STATE VARIABLES (SUDAH DIPINDAHKAN)
+  // =========================================================================
+  // Kode di bawah ini DULU ada di sini (Pertemuan 1).
+  // Sekarang DIPINDAHKAN ke: bloc/user_state.dart
+  // =========================================================================
+  //
+  // List<UserModel> users = [];      // → Sekarang di UserLoaded.users
+  // bool isLoading = false;          // → Sekarang jadi class UserLoading
+  // String? errorMessage;            // → Sekarang di UserError.message
+  //
+  // =========================================================================
+
+  // =========================================================================
+  // 📌 JEJAK PERTEMUAN 1 - FETCH USERS (SUDAH DIPINDAHKAN)
+  // =========================================================================
+  // Method fetchUsers() DULU ada di sini (Pertemuan 1).
+  // Sekarang DIPINDAHKAN ke: bloc/user_cubit.dart → method loadUsers()
+  // =========================================================================
+  //
+  // Future<void> fetchUsers() async {
+  //   setState(() {
+  //     isLoading = true;
+  //     errorMessage = null;
+  //   });
+  //
+  //   try {
+  //     final response = await http.get(
+  //       Uri.parse('https://627e360ab75a25d3f3b37d5a.mockapi.io/...'),
+  //     );
+  //
+  //     if (response.statusCode == 200) {
+  //       final List<dynamic> jsonList = json.decode(response.body);
+  //       setState(() {
+  //         users = jsonList.map((json) => UserModel.fromJson(json)).toList();
+  //         isLoading = false;
+  //       });
+  //     }
+  //   } catch (e) {
+  //     setState(() {
+  //       errorMessage = e.toString();
+  //       isLoading = false;
+  //     });
+  //   }
+  // }
+  //
+  // 🆕 SEKARANG: Cukup panggil context.read<UserCubit>().loadUsers()
+  //
+  // =========================================================================
 
   @override
   Widget build(BuildContext context) {
@@ -39,45 +87,33 @@ class UserListPage extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () {
-              // ---------------------------------------------------------------
-              // MEMANGGIL METHOD CUBIT
-              // ---------------------------------------------------------------
-              // context.read<UserCubit>() mengakses Cubit dari BlocProvider
-              // Lalu panggil method refreshUsers()
-              // ---------------------------------------------------------------
-              context.read<UserCubit>().refreshUsers();
-            },
+            // 🔄 PERUBAHAN: Dulu panggil fetchUsers(), sekarang via Cubit
+            onPressed: () => context.read<UserCubit>().refreshUsers(),
             tooltip: 'Refresh',
           ),
         ],
       ),
 
-      // -----------------------------------------------------------------------
-      // BLOCBUILDER - REAKTIF TERHADAP STATE
-      // -----------------------------------------------------------------------
-      // BlocBuilder<CubitType, StateType> akan:
-      // 1. Listen perubahan state dari Cubit
-      // 2. Rebuild widget saat state berubah
-      //
-      // builder(context, state) dipanggil setiap kali state berubah
-      // -----------------------------------------------------------------------
+      // =====================================================================
+      // 🆕 BARU DI PERTEMUAN 2: BlocBuilder
+      // =====================================================================
+      // Dulu di Pertemuan 1 kita pakai if-else dengan isLoading, errorMessage
+      // Sekarang pakai BlocBuilder yang reaktif terhadap state changes
+      // =====================================================================
       body: BlocBuilder<UserCubit, UserState>(
         builder: (context, state) {
-          // -----------------------------------------------------------------
-          // LOAD DATA SAAT PERTAMA KALI
-          // -----------------------------------------------------------------
-          // Jika state masih Initial, panggil loadUsers()
-          // -----------------------------------------------------------------
+          // -------------------------------------------------------------------
+          // 📌 JEJAK PERTEMUAN 1: Dulu pakai if (isLoading) {...}
+          // Sekarang pakai pattern matching: if (state is UserLoading)
+          // -------------------------------------------------------------------
+
           if (state is UserInitial) {
-            // Panggil loadUsers saat pertama kali
+            // Trigger load saat pertama kali
             context.read<UserCubit>().loadUsers();
             return const Center(child: CircularProgressIndicator());
           }
 
-          // -----------------------------------------------------------------
-          // STATE: Loading
-          // -----------------------------------------------------------------
+          // 🔄 Dulu: if (isLoading) return CircularProgressIndicator()
           if (state is UserLoading) {
             return const Center(
               child: Column(
@@ -91,9 +127,7 @@ class UserListPage extends StatelessWidget {
             );
           }
 
-          // -----------------------------------------------------------------
-          // STATE: Error
-          // -----------------------------------------------------------------
+          // 🔄 Dulu: if (errorMessage != null) return ErrorWidget()
           if (state is UserError) {
             return Center(
               child: Column(
@@ -109,7 +143,7 @@ class UserListPage extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 32),
                     child: Text(
-                      state.message,
+                      state.message, // 🔄 Dulu: errorMessage
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -124,11 +158,10 @@ class UserListPage extends StatelessWidget {
             );
           }
 
-          // -----------------------------------------------------------------
-          // STATE: Loaded
-          // -----------------------------------------------------------------
+          // 🔄 Dulu: langsung pakai variable 'users'
+          // Sekarang: ambil dari state.users
           if (state is UserLoaded) {
-            final users = state.users;
+            final users = state.users; // 🔄 Dulu: this.users
 
             if (users.isEmpty) {
               return Center(
@@ -175,7 +208,6 @@ class UserListPage extends StatelessWidget {
             );
           }
 
-          // Default
           return const SizedBox.shrink();
         },
       ),
@@ -183,6 +215,7 @@ class UserListPage extends StatelessWidget {
   }
 
   /// Widget untuk menampilkan satu user dalam bentuk card
+  /// (Sama seperti Pertemuan 1, belum dipisah ke file terpisah)
   Widget _buildUserCard(UserModel user) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

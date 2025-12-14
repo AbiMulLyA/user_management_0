@@ -2,26 +2,14 @@
 // PERTEMUAN 3: MENAMBAHKAN DATA LAYER (REPOSITORY & DATASOURCE)
 // ============================================================================
 //
-// Pada pertemuan ini, kita menambahkan DATA LAYER:
-// - Repository: Abstraksi akses data
-// - DataSource: Implementasi akses ke API
-// - Model dengan toJson untuk POST
+// 🔄 PERUBAHAN DARI PERTEMUAN 2:
+// ============================================================================
+// Di Pertemuan 2, Cubit dibuat langsung di BlocProvider.
+// Di Pertemuan 3, kita membuat semua dependencies secara urut di main().
 //
-// PERBEDAAN DARI PERTEMUAN 2:
-// -------------------------------------------------------------------------
-// Pertemuan 2: Cubit langsung panggil HTTP/API
-// Pertemuan 3: Cubit -> Repository -> DataSource -> API
-//
-// KEUNTUNGAN:
-// 1. Cubit tidak perlu tahu tentang HTTP
-// 2. Repository bisa di-mock untuk testing
-// 3. Mudah ganti sumber data (API, local DB, dll)
-//
-// MASIH BELUM IDEAL:
-// - Belum ada Entity (masih pakai Model langsung)
-// - Belum ada Use Cases
-// - Dependency masih dibuat langsung
-// - Akan diperbaiki di Pertemuan 4 (Clean Architecture lengkap)
+// YANG BARU:
+// - Manual Dependency Injection
+// - Urutan pembuatan: Client → DataSource → Repository → Cubit
 //
 // ============================================================================
 
@@ -35,35 +23,46 @@ import 'pages/user_list_page.dart';
 
 /// Entry point aplikasi
 void main() {
-  // -------------------------------------------------------------------------
-  // MEMBUAT DEPENDENCIES SECARA MANUAL
-  // -------------------------------------------------------------------------
-  // Di sini kita membuat semua dependencies secara urut:
-  // 1. HTTP Client
-  // 2. DataSource (butuh Client)
-  // 3. Repository (butuh DataSource)
-  // 4. Cubit (butuh Repository)
+  // =========================================================================
+  // 🆕 BARU DI PERTEMUAN 3: Manual Dependency Injection
+  // =========================================================================
   //
-  // ⚠️ Masih manual! Di Pertemuan 4, kita akan pakai Dependency Injection
-  // -------------------------------------------------------------------------
+  // 📌 JEJAK PERTEMUAN 2:
+  // Dulu Cubit dibuat langsung di BlocProvider:
+  //   create: (context) => UserCubit()
+  //
+  // Sekarang kita buat semua dependencies secara urut:
+  //   1. HTTP Client
+  //   2. DataSource (butuh Client)
+  //   3. Repository (butuh DataSource)
+  //   4. Cubit (butuh Repository)
+  //
+  // ⚠️ Urutan PENTING! Tidak boleh terbalik.
+  // =========================================================================
 
   // LANGKAH 1: Buat HTTP Client
   final httpClient = http.Client();
 
-  // LANGKAH 2: Buat Data Source
+  // LANGKAH 2: Buat Data Source (butuh Client)
+  // 🆕 BARU: DataSource tidak ada di Pertemuan 2
   final userDataSource = UserRemoteDataSourceImpl(client: httpClient);
 
-  // LANGKAH 3: Buat Repository
+  // LANGKAH 3: Buat Repository (butuh DataSource)
+  // 🆕 BARU: Repository tidak ada di Pertemuan 2
   final userRepository = UserRepositoryImpl(dataSource: userDataSource);
 
-  // LANGKAH 4: Buat Cubit
+  // LANGKAH 4: Buat Cubit (butuh Repository)
+  // 🔄 PERUBAHAN: Dulu UserCubit(), sekarang UserCubit(repository: ...)
   final userCubit = UserCubit(repository: userRepository);
 
   runApp(MyApp(userCubit: userCubit));
 }
 
 /// Root widget aplikasi
+///
+/// 🔄 PERUBAHAN: Sekarang menerima Cubit dari luar
 class MyApp extends StatelessWidget {
+  // 🆕 BARU: Cubit diterima dari constructor, bukan dibuat di dalam
   final UserCubit userCubit;
 
   const MyApp({super.key, required this.userCubit});
@@ -82,7 +81,13 @@ class MyApp extends StatelessWidget {
           elevation: 2,
         ),
       ),
-      // BlocProvider.value karena Cubit sudah dibuat di luar
+      // =====================================================================
+      // 🔄 PERUBAHAN:
+      // Pertemuan 2: BlocProvider(create: (context) => UserCubit(), ...)
+      // Pertemuan 3: BlocProvider.value(value: userCubit, ...)
+      //
+      // Menggunakan .value karena Cubit sudah dibuat di luar
+      // =====================================================================
       home: BlocProvider.value(
         value: userCubit,
         child: const UserListPage(),
