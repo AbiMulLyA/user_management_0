@@ -4,27 +4,15 @@
 // LOKASI: lib/features/user/domain/usecases/
 // ============================================================================
 //
-// Use case ini mendemonstrasikan BUSINESS LOGIC dalam use case.
-// Berbeda dengan GetUsersUseCase yang simple, use case ini memiliki
-// VALIDASI sebelum menyimpan data.
-//
-// MENGAPA VALIDASI DI USE CASE?
-// -------------------------------------------------------------------------
-// 1. Validasi adalah bagian dari business logic
-// 2. Memastikan data yang masuk ke repository sudah valid
-// 3. Bisa digunakan dari berbagai UI (web, mobile) dengan validasi yang sama
-// 4. UI validation bisa berbeda-beda, tapi business validation tetap sama
-//
-// ============================================================================
+// Use case ini bertugas untuk menambahkan user baru ke sistem.
 
 import '../entities/user_entity.dart';
 import '../repositories/user_repository.dart';
 
 /// Use case untuk menambahkan user baru
 ///
-/// Use case ini berisi:
-/// - Validasi data user sebelum disimpan
-/// - Pemanggilan repository untuk menyimpan data
+/// Use case ini menerima UserEntity dan menyimpannya melalui repository.
+/// Validasi sudah ditangani di UI (form validation).
 class AddUserUseCase {
   // -------------------------------------------------------------------------
   // DEPENDENCY
@@ -50,11 +38,7 @@ class AddUserUseCase {
   /// - [user]: UserEntity yang akan ditambahkan
   ///
   /// Returns: UserEntity yang berhasil ditambahkan (dengan ID dari server)
-  ///
-  /// Throws:
-  /// - Exception jika nama kosong
-  /// - Exception jika email kosong
-  /// - Exception jika terjadi error di repository
+  /// Throws: Exception jika terjadi error di repository
   ///
   /// Contoh penggunaan:
   /// ```dart
@@ -72,28 +56,8 @@ class AddUserUseCase {
   /// }
   /// ```
   Future<UserEntity> execute(UserEntity user) async {
-    // -----------------------------------------------------------------------
-    // BUSINESS VALIDATION
-    // -----------------------------------------------------------------------
-    // Validasi ini adalah BUSINESS RULE yang harus dipenuhi
-    // Berbeda dengan UI validation yang bisa di-bypass
-    // -----------------------------------------------------------------------
-
-    // Validasi: Nama tidak boleh kosong
-    if (user.name.isEmpty) {
-      throw Exception('Nama tidak boleh kosong');
-    }
-
-    // Validasi: Email tidak boleh kosong
-    if (user.email.isEmpty) {
-      throw Exception('Email tidak boleh kosong');
-    }
-
-    // -----------------------------------------------------------------------
-    // REPOSITORY CALL
-    // -----------------------------------------------------------------------
-    // Setelah validasi berhasil, panggil repository untuk menyimpan
-    // -----------------------------------------------------------------------
+    // Langsung panggil repository untuk menyimpan user
+    // Validasi sudah dilakukan di UI layer
     return await repository.addUser(user);
   }
 }
