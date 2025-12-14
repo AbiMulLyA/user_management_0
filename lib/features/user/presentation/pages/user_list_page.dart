@@ -30,27 +30,6 @@ class _UserListPageState extends State<UserListPage> {
         title: const Text('User Management'),
         centerTitle: true,
         elevation: 2,
-        actions: [
-          // Tombol untuk sorting
-          BlocBuilder<UserCubit, UserState>(
-            builder: (context, state) {
-              if (state is UserLoaded) {
-                return IconButton(
-                  icon: Icon(
-                    state.isAscending
-                        ? Icons.sort_by_alpha
-                        : Icons.sort_by_alpha_outlined,
-                  ),
-                  tooltip: 'Sort by name',
-                  onPressed: () {
-                    context.read<UserCubit>().sortUsers();
-                  },
-                );
-              }
-              return const SizedBox.shrink();
-            },
-          ),
-        ],
       ),
       body: BlocBuilder<UserCubit, UserState>(
         builder: (context, state) {
@@ -178,12 +157,15 @@ class _UserListPageState extends State<UserListPage> {
       // Floating Action Button untuk tambah user
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
+          // Ambil cubit dari context yang benar sebelum navigasi
+          final cubit = context.read<UserCubit>();
+
           // Navigate ke halaman tambah user
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => AddUserPage(
-                cubit: context.read<UserCubit>(),
+              builder: (_) => AddUserPage(
+                cubit: cubit,
               ),
             ),
           );
