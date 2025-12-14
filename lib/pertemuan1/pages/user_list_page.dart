@@ -107,8 +107,54 @@ class _UserListPageState extends State<UserListPage> {
       final response = await http.get(
         Uri.parse(
             'https://627e360ab75a25d3f3b37d5a.mockapi.io/api/v1/accurate/user'),
+
+        // -----------------------------------------------------------------
+        // HEADERS: Apa itu dan untuk apa?
+        // -----------------------------------------------------------------
+        // Headers adalah METADATA yang dikirim bersama HTTP request.
+        // Metadata ini memberikan informasi tambahan ke server tentang
+        // request yang kita kirim.
+        //
+        // Headers berbentuk key-value pairs (Map<String, String>)
+        //
+        // 'Content-Type': 'application/json' artinya:
+        // - Content-Type: jenis konten yang kita kirim/terima
+        // - application/json: kita bekerja dengan format JSON
+        //
+        // Contoh header lainnya:
+        // - 'Authorization': 'Bearer token123' -> untuk autentikasi
+        // - 'Accept': 'application/json' -> format response yang diinginkan
+        // - 'User-Agent': 'MyApp/1.0' -> identitas aplikasi kita
+        // -----------------------------------------------------------------
         headers: {'Content-Type': 'application/json'},
       );
+
+      // -------------------------------------------------------------------
+      // MENGAPA RESPONSE BISA PUNYA .statusCode DAN .body?
+      // -------------------------------------------------------------------
+      // Variabel 'response' adalah OBJECT dari class Response
+      // (dari package http)
+      //
+      // Class Response memiliki PROPERTIES:
+      // - statusCode: int -> kode status HTTP (200 = OK, 404 = Not Found, dll)
+      // - body: String -> isi/konten response dalam bentuk text
+      // - headers: Map -> headers yang dikirim server
+      // - reasonPhrase: String -> deskripsi status ("OK", "Not Found", dll)
+      //
+      // ANALOGI:
+      // Response seperti SURAT BALASAN dari server yang berisi:
+      // - statusCode = status pengiriman (berhasil/gagal)
+      // - body = isi surat (data yang diminta)
+      // - headers = keterangan tambahan di amplop
+      //
+      // HTTP STATUS CODE yang umum:
+      // - 200: OK (sukses)
+      // - 201: Created (data berhasil dibuat)
+      // - 400: Bad Request (request tidak valid)
+      // - 401: Unauthorized (tidak punya akses)
+      // - 404: Not Found (data tidak ditemukan)
+      // - 500: Internal Server Error (error di server)
+      // -------------------------------------------------------------------
 
       // -------------------------------------------------------------------
       // LANGKAH 3: Cek status response
@@ -122,7 +168,37 @@ class _UserListPageState extends State<UserListPage> {
         // -----------------------------------------------------------------
         final List<dynamic> jsonList = json.decode(response.body);
 
-        // Konversi setiap item JSON menjadi UserModel
+        // -----------------------------------------------------------------
+        // CARA MEMBACA KODE .map().toList():
+        // -----------------------------------------------------------------
+        // Kode: jsonList.map((json) => UserModel.fromJson(json)).toList()
+        //
+        // Mari kita baca step-by-step:
+        //
+        // 1. jsonList adalah List berisi data JSON:
+        //    [{"id": "1", "name": "John"}, {"id": "2", "name": "Jane"}, ...]
+        //
+        // 2. .map() adalah function untuk MENTRANSFORMASI setiap item di list
+        //    - Dia akan loop setiap item di jsonList
+        //    - Setiap item disebut 'json' (nama parameternya)
+        //    - Setiap item akan diproses oleh function di dalamnya
+        //
+        // 3. (json) => UserModel.fromJson(json)
+        //    - Ini adalah arrow function (lambda)
+        //    - Untuk setiap 'json' dalam list, buat UserModel dari json itu
+        //    - Hasilnya: List berisi UserModel, bukan Map lagi
+        //
+        // 4. .toList()
+        //    - .map() menghasilkan Iterable, bukan List
+        //    - .toList() mengkonversi Iterable menjadi List
+        //
+        // VISUALISASI TRANSFORMASI:
+        // SEBELUM (List<dynamic> berisi Map):
+        //   [{"id": "1", "name": "John"}, {"id": "2", "name": "Jane"}]
+        //
+        // SESUDAH (List<UserModel> berisi Object):
+        //   [UserModel(id: "1", name: "John"), UserModel(id: "2", name: "Jane")]
+        // -----------------------------------------------------------------
         final List<UserModel> fetchedUsers =
             jsonList.map((json) => UserModel.fromJson(json)).toList();
 
