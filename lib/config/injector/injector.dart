@@ -4,19 +4,64 @@
 // LOKASI: lib/config/injector/
 // ============================================================================
 //
-// DEPENDENCY INJECTION (DI) adalah design pattern dimana object menerima
-// dependencies-nya dari luar, bukan membuat sendiri di dalamnya.
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║                    APA ITU DEPENDENCY INJECTION (DI)?                     ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
 //
-// MENGAPA MENGGUNAKAN DI?
-// 1. Loose Coupling - Class tidak terikat erat dengan implementasi konkrit
-// 2. Testability - Mudah untuk mock dependencies saat testing
-// 3. Maintainability - Mudah mengganti implementasi tanpa mengubah banyak code
-// 4. Single Responsibility - Tiap class fokus pada tugasnya sendiri
+// ANALOGI SEDERHANA:
+// -------------------------------------------------------------------------
+// Bayangkan kamu punya mobil (class Mobil) yang butuh mesin (class Mesin).
 //
-// CARA KERJA:
-// 1. Injector dibuat sebagai Singleton (hanya ada 1 instance)
-// 2. Method init() membuat semua dependencies
-// 3. Dependencies disimpan dan bisa diakses dari mana saja
+// ❌ TANPA Dependency Injection:
+//    class Mobil {
+//      Mesin mesin = Mesin();  // Mobil MEMBUAT mesinnya sendiri
+//    }
+//
+//    Masalah:
+//    - Mobil terikat erat dengan Mesin tertentu
+//    - Susah ganti mesin (misal dari bensin ke listrik)
+//    - Susah testing (tidak bisa pakai mesin palsu untuk test)
+//
+// ✅ DENGAN Dependency Injection:
+//    class Mobil {
+//      final Mesin mesin;
+//      Mobil({required this.mesin});  // Mesin DIBERIKAN dari luar
+//    }
+//
+//    // Saat membuat mobil:
+//    final mobil = Mobil(mesin: MesinBensin());
+//    // atau
+//    final mobil = Mobil(mesin: MesinListrik());
+//
+//    Keuntungan:
+//    - Mobil tidak peduli mesin apa yang dipakai
+//    - Mudah ganti mesin tanpa mengubah class Mobil
+//    - Mudah testing dengan mesin palsu (mock)
+//
+// -------------------------------------------------------------------------
+//
+// DALAM KONTEKS APLIKASI INI:
+// -------------------------------------------------------------------------
+// - UserCubit BUTUH GetUsersUseCase
+// - GetUsersUseCase BUTUH UserRepository
+// - UserRepository BUTUH UserRemoteDataSource
+// - UserRemoteDataSource BUTUH http.Client
+//
+// Semua "kebutuhan" ini DIBERIKAN dari luar, bukan dibuat di dalam class.
+// File injector.dart ini yang bertugas MEMBUAT dan MEMBERIKAN semua kebutuhan.
+//
+// -------------------------------------------------------------------------
+//
+// KENAPA PAKAI SINGLETON PATTERN?
+// -------------------------------------------------------------------------
+// Singleton = hanya ada 1 instance dalam aplikasi
+//
+// Kita ingin semua bagian aplikasi menggunakan UserCubit yang SAMA,
+// bukan masing-masing membuat UserCubit sendiri.
+//
+// Contoh:
+//   Injector().userCubit  // Di halaman A
+//   Injector().userCubit  // Di halaman B (sama persis dengan di A)
 //
 // ============================================================================
 
@@ -30,149 +75,129 @@ import '../../features/user/domain/usecases/get_cities_usecase.dart';
 import '../../features/user/presentation/bloc/user_cubit.dart';
 
 /// Dependency Injection Container
-/// Berisi semua dependencies yang dibutuhkan aplikasi
 ///
-/// Menggunakan SINGLETON PATTERN:
-/// - Hanya ada 1 instance Injector dalam aplikasi
-/// - Instance yang sama digunakan di seluruh aplikasi
+/// Class ini bertugas:
+/// 1. MEMBUAT semua object yang dibutuhkan aplikasi
+/// 2. MENYIMPAN object-object tersebut
+/// 3. MEMBERIKAN object saat diminta
+///
+/// Dengan begitu, class lain tidak perlu tahu cara membuat dependencies-nya.
 class Injector {
-  // -------------------------------------------------------------------------
-  // SINGLETON PATTERN IMPLEMENTATION
-  // -------------------------------------------------------------------------
-  // _instance: satu-satunya instance dari Injector (private)
-  // factory Injector(): mengembalikan _instance yang sudah ada
-  // _internal(): constructor private yang hanya dipanggil sekali
-  // -------------------------------------------------------------------------
+  // =========================================================================
+  // SINGLETON PATTERN
+  // =========================================================================
+  //
+  // CARA KERJA SINGLETON:
+  // 1. _instance adalah satu-satunya Injector yang ada (dibuat sekali)
+  // 2. factory Injector() selalu mengembalikan _instance yang sama
+  // 3. _internal() adalah constructor private, tidak bisa dipanggil dari luar
+  //
+  // CONTOH PENGGUNAAN:
+  //   final injector1 = Injector();  // Dapat _instance
+  //   final injector2 = Injector();  // Dapat _instance yang SAMA
+  //   print(injector1 == injector2); // TRUE - object yang sama!
+  //
+  // =========================================================================
 
-  /// Instance singleton (static = shared across all uses)
+  /// Satu-satunya instance dari Injector
   static final Injector _instance = Injector._internal();
 
-  /// Factory constructor - mengembalikan instance yang sudah ada
-  /// Setiap kali Injector() dipanggil, akan return _instance yang sama
+  /// Factory constructor - selalu return instance yang sama
   factory Injector() => _instance;
 
-  /// Private constructor - hanya dipanggil sekali saat pertama kali
+  /// Constructor private - hanya dipanggil sekali saat _instance dibuat
   Injector._internal();
 
   // =========================================================================
-  // DEPENDENCIES
+  // DAFTAR DEPENDENCIES
   // =========================================================================
-  // Semua dependencies dideklarasikan dengan 'late' keyword
-  // 'late' artinya variabel akan diinisialisasi nanti (di method init)
+  //
+  // 'late' artinya: "Variabel ini akan diisi nanti, bukan sekarang"
+  // Kita isi semua variabel ini di method init()
+  //
   // =========================================================================
 
-  // -------------------------------------------------------------------------
-  // EXTERNAL DEPENDENCIES
-  // -------------------------------------------------------------------------
-  /// HTTP Client untuk melakukan request ke API
-  /// Digunakan oleh DataSource untuk komunikasi dengan server
+  /// HTTP Client - untuk request ke API
   late http.Client httpClient;
 
-  // -------------------------------------------------------------------------
-  // DATA LAYER DEPENDENCIES
-  // -------------------------------------------------------------------------
-  /// Remote Data Source - bertanggung jawab untuk komunikasi dengan API
-  /// Menghandle parsing JSON dan HTTP requests
+  /// Data Source - komunikasi langsung dengan API
   late UserRemoteDataSource userRemoteDataSource;
 
-  // -------------------------------------------------------------------------
-  // DOMAIN LAYER DEPENDENCIES
-  // -------------------------------------------------------------------------
   /// Repository - abstraksi untuk akses data
-  /// Menggunakan interface (abstract class) untuk loose coupling
   late UserRepository userRepository;
 
-  /// Use Cases - berisi business logic spesifik
-  /// Setiap use case mewakili satu aksi yang bisa dilakukan user
+  /// Use Cases - satu aksi spesifik
   late GetUsersUseCase getUsersUseCase;
   late AddUserUseCase addUserUseCase;
   late GetCitiesUseCase getCitiesUseCase;
 
-  // -------------------------------------------------------------------------
-  // PRESENTATION LAYER DEPENDENCIES
-  // -------------------------------------------------------------------------
   /// Cubit - state management untuk UI
-  /// Menghubungkan UI dengan business logic
   late UserCubit userCubit;
 
   // =========================================================================
-  // INITIALIZATION METHOD
+  // METHOD INIT - MEMBUAT SEMUA DEPENDENCIES
   // =========================================================================
-  /// Initialize semua dependencies
-  ///
-  /// URUTAN INISIALISASI PENTING!
-  /// Dependencies harus dibuat sesuai urutan dependency:
-  /// 1. External (http client)
-  /// 2. Data Sources (butuh http client)
-  /// 3. Repositories (butuh data sources)
-  /// 4. Use Cases (butuh repositories)
-  /// 5. Cubits (butuh use cases)
+  //
+  // URUTAN PEMBUATAN PENTING!
+  // -------------------------------------------------------------------------
+  // Harus sesuai dengan siapa butuh siapa:
+  //
+  //   http.Client
+  //       ↓
+  //   UserRemoteDataSource (butuh http.Client)
+  //       ↓
+  //   UserRepository (butuh DataSource)
+  //       ↓
+  //   UseCases (butuh Repository)
+  //       ↓
+  //   UserCubit (butuh UseCases)
+  //
+  // Kalau urutannya salah, akan error karena dependency belum ada!
+  //
+  // =========================================================================
+
   void init() {
-    // -----------------------------------------------------------------------
-    // STEP 1: External Dependencies
-    // -----------------------------------------------------------------------
-    // http.Client adalah class bawaan dari package http
-    // Digunakan untuk melakukan HTTP requests (GET, POST, dll)
+    // LANGKAH 1: Buat HTTP Client
+    // http.Client adalah bawaan dari package http
     httpClient = http.Client();
 
-    // -----------------------------------------------------------------------
-    // STEP 2: Data Sources
-    // -----------------------------------------------------------------------
-    // DataSource adalah class yang berinteraksi langsung dengan API
-    // Membutuhkan httpClient untuk melakukan requests
+    // LANGKAH 2: Buat Data Source
+    // DataSource butuh httpClient untuk request ke API
+    // Di sini kita BERIKAN httpClient yang sudah dibuat di atas
     userRemoteDataSource = UserRemoteDataSourceImpl(
-      client: httpClient,
+      client: httpClient, // <- Dependency Injection!
     );
 
-    // -----------------------------------------------------------------------
-    // STEP 3: Repositories
-    // -----------------------------------------------------------------------
-    // Repository mengabstraksi DataSource
-    // Domain layer hanya mengenal Repository interface, tidak DataSource
-    // Ini memungkinkan kita mengganti DataSource tanpa mengubah domain
+    // LANGKAH 3: Buat Repository
+    // Repository butuh DataSource untuk ambil data
     userRepository = UserRepositoryImpl(
-      remoteDataSource: userRemoteDataSource,
+      remoteDataSource: userRemoteDataSource, // <- Dependency Injection!
     );
 
-    // -----------------------------------------------------------------------
-    // STEP 4: Use Cases
-    // -----------------------------------------------------------------------
-    // Use Case berisi business logic untuk satu aksi spesifik
-    // Setiap use case hanya melakukan satu hal (Single Responsibility)
-
-    // Use case untuk mendapatkan daftar user
+    // LANGKAH 4: Buat Use Cases
+    // Setiap use case butuh repository
     getUsersUseCase = GetUsersUseCase(
-      repository: userRepository,
+      repository: userRepository, // <- Dependency Injection!
     );
 
-    // Use case untuk menambahkan user baru
     addUserUseCase = AddUserUseCase(
-      repository: userRepository,
+      repository: userRepository, // <- Dependency Injection!
     );
 
-    // Use case untuk mendapatkan daftar kota
     getCitiesUseCase = GetCitiesUseCase(
-      repository: userRepository,
+      repository: userRepository, // <- Dependency Injection!
     );
 
-    // -----------------------------------------------------------------------
-    // STEP 5: Cubits (State Management)
-    // -----------------------------------------------------------------------
-    // Cubit menghubungkan UI dengan use cases
-    // UI memanggil method di Cubit, Cubit memanggil use case
+    // LANGKAH 5: Buat Cubit
+    // Cubit butuh semua use cases
     userCubit = UserCubit(
-      getUsersUseCase: getUsersUseCase,
-      addUserUseCase: addUserUseCase,
-      getCitiesUseCase: getCitiesUseCase,
+      getUsersUseCase: getUsersUseCase, // <- Dependency Injection!
+      addUserUseCase: addUserUseCase, // <- Dependency Injection!
+      getCitiesUseCase: getCitiesUseCase, // <- Dependency Injection!
     );
   }
 
-  // =========================================================================
-  // UTILITY METHODS
-  // =========================================================================
-
   /// Reset cubit (untuk testing atau refresh state)
-  /// Membuat instance baru dari UserCubit dengan dependencies yang sama
   void resetCubit() {
     userCubit = UserCubit(
       getUsersUseCase: getUsersUseCase,

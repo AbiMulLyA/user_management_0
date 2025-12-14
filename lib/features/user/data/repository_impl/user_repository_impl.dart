@@ -11,24 +11,6 @@
 // 1. Mengimplementasikan kontrak dari Domain Layer
 // 2. Menghubungkan Domain Layer dengan Data Source
 // 3. Mengkonversi Model (data layer) ke Entity (domain layer)
-// 4. Memutuskan sumber data mana yang digunakan (API, cache, local DB)
-//
-// ALUR DATA:
-// -------------------------------------------------------------------------
-//
-//   DOMAIN LAYER          DATA LAYER
-//   +-----------+        +-------------------+        +-------------+
-//   |           |        |                   |        |             |
-//   | Use Case  | -----> | RepositoryImpl    | -----> | DataSource  |
-//   |           |        |                   |        |             |
-//   +-----------+        +-------------------+        +-------------+
-//        |                      |                           |
-//        |                      |                           v
-//        |                      |                     +----------+
-//        |                      |                     |   API    |
-//        |                      |                     +----------+
-//        v                      v
-//   UserEntity <----------- UserModel <------------- JSON Response
 //
 // ============================================================================
 
@@ -39,85 +21,104 @@ import '../datasources/remote/user_remote_data_source.dart';
 import '../models/user_model.dart';
 
 /// Implementasi konkrit dari UserRepository
-///
-/// Class ini mengimplementasikan semua method yang didefinisikan
-/// di abstract class UserRepository.
-///
-/// IMPLEMENTS vs EXTENDS:
-/// - implements: harus mengimplementasikan SEMUA method dari interface
-/// - extends: mewarisi implementasi dari parent class
 class UserRepositoryImpl implements UserRepository {
+  // =========================================================================
+  // DEPENDENCY INJECTION - PENJELASAN LENGKAP
+  // =========================================================================
+  //
+  // LIHAT PROPERTY INI:
+  //   final UserRemoteDataSource remoteDataSource;
+  //
+  // Class ini BUTUH remoteDataSource untuk bekerja.
+  // Tapi perhatikan: kita TIDAK membuat remoteDataSource di sini!
+  //
+  // ❌ CARA YANG SALAH (tanpa Dependency Injection):
+  //    class UserRepositoryImpl {
+  //      final remoteDataSource = UserRemoteDataSourceImpl(client: http.Client());
+  //    }
+  //
+  //    Masalah:
+  //    - UserRepositoryImpl terikat erat dengan UserRemoteDataSourceImpl
+  //    - Susah untuk testing (tidak bisa pakai mock/fake DataSource)
+  //    - Susah untuk ganti implementasi
+  //
+  // ✅ CARA YANG BENAR (dengan Dependency Injection):
+  //    class UserRepositoryImpl {
+  //      final UserRemoteDataSource remoteDataSource;  // Deklarasi saja
+  //      UserRepositoryImpl({required this.remoteDataSource});  // Diberikan dari luar
+  //    }
+  //
+  //    Keuntungan:
+  //    - UserRepositoryImpl tidak peduli DataSource dari mana
+  //    - Bisa diganti dengan mock DataSource saat testing
+  //    - Lebih fleksibel
+  //
+  // DI MANA remoteDataSource DIBUAT DAN DIBERIKAN?
   // -------------------------------------------------------------------------
-  // DEPENDENCY
-  // -------------------------------------------------------------------------
+  // Di file injector.dart:
+  //
+  //    // Buat DataSource dulu
+  //    userRemoteDataSource = UserRemoteDataSourceImpl(client: httpClient);
+  //
+  //    // Baru buat Repository, BERIKAN DataSource yang sudah dibuat
+  //    userRepository = UserRepositoryImpl(
+  //      remoteDataSource: userRemoteDataSource,  // <- Ini yang "diinject"
+  //    );
+  //
+  // =========================================================================
 
   /// Remote Data Source untuk komunikasi dengan API
-  /// Repository menggunakan DataSource, bukan langsung ke HTTP Client
+  /// TIDAK dibuat di sini, tapi DIBERIKAN melalui constructor
   final UserRemoteDataSource remoteDataSource;
 
-  // -------------------------------------------------------------------------
-  // CONSTRUCTOR
-  // -------------------------------------------------------------------------
+  // =========================================================================
+  // CONSTRUCTOR DENGAN DEPENDENCY INJECTION
+  // =========================================================================
+  //
+  // ANATOMI CONSTRUCTOR INI:
+  //
+  //   UserRepositoryImpl({required this.remoteDataSource});
+  //   │                  │        │    │
+  //   │                  │        │    └── this.remoteDataSource = langsung assign
+  //   │                  │        │        ke property remoteDataSource di atas
+  //   │                  │        │
+  //   │                  │        └── required = wajib diisi, tidak boleh kosong
+  //   │                  │
+  //   │                  └── {} = named parameter (parameter dengan nama)
+  //   │                      Cara pakai: UserRepositoryImpl(remoteDataSource: xxx)
+  //   │
+  //   └── Nama constructor (sama dengan nama class)
+  //
+  // CONTOH PENGGUNAAN:
+  //   final dataSource = UserRemoteDataSourceImpl(...);
+  //   final repository = UserRepositoryImpl(remoteDataSource: dataSource);
+  //
+  // =========================================================================
 
-  /// Constructor dengan dependency injection
   UserRepositoryImpl({required this.remoteDataSource});
 
-  // -------------------------------------------------------------------------
-  // GET USERS
-  // -------------------------------------------------------------------------
+  // =========================================================================
+  // IMPLEMENTASI METHOD
+  // =========================================================================
 
-  /// Mendapatkan semua user
-  ///
-  /// Alur:
-  /// 1. Panggil remoteDataSource.getUsers()
-  /// 2. DataSource mengembalikan List<UserModel>
-  /// 3. Return sebagai List<UserEntity> (karena UserModel extends UserEntity)
-  ///
-  /// CATATAN:
-  /// Karena UserModel extends UserEntity, kita bisa langsung return
-  /// List<UserModel> sebagai List<UserEntity> (Liskov Substitution Principle)
   @override
   Future<List<UserEntity>> getUsers() async {
     try {
-      // Mendapatkan data dari remote data source
+      // Panggil DataSource untuk ambil data dari API
       final userModels = await remoteDataSource.getUsers();
-
       // Return sebagai List<UserEntity>
-      // UserModel bisa digunakan sebagai UserEntity karena inheritance
       return userModels;
     } catch (e) {
-      // Wrap error dengan konteks dari repository
       throw Exception('Repository error: $e');
     }
   }
 
-  // -------------------------------------------------------------------------
-  // ADD USER
-  // -------------------------------------------------------------------------
-
-  /// Menambahkan user baru
-  ///
-  /// Alur:
-  /// 1. Terima UserEntity dari Use Case (domain layer)
-  /// 2. Convert UserEntity ke UserModel (data layer)
-  /// 3. Kirim UserModel ke DataSource
-  /// 4. Return hasil sebagai UserEntity
-  ///
-  /// MENGAPA PERLU CONVERT?
-  /// - Use Case bekerja dengan Entity (tidak tahu tentang JSON/API)
-  /// - DataSource bekerja dengan Model (tahu cara convert ke JSON)
-  /// - Repository menjadi "penerjemah" di antara keduanya
   @override
   Future<UserEntity> addUser(UserEntity user) async {
     try {
-      // ---------------------------------------------------------------------
-      // LANGKAH 1: Convert UserEntity ke UserModel
-      // ---------------------------------------------------------------------
-      // UserEntity tidak punya toJson(), jadi kita buat UserModel
-      // dengan data yang sama untuk dikirim ke API
-      // ---------------------------------------------------------------------
+      // Convert UserEntity ke UserModel untuk dikirim ke API
       final userModel = UserModel(
-        id: '', // ID akan di-generate oleh API
+        id: '',
         name: user.name,
         address: user.address,
         email: user.email,
@@ -125,30 +126,14 @@ class UserRepositoryImpl implements UserRepository {
         city: user.city,
       );
 
-      // ---------------------------------------------------------------------
-      // LANGKAH 2: Kirim ke DataSource
-      // ---------------------------------------------------------------------
-      // DataSource akan:
-      // - Convert Model ke JSON
-      // - Kirim ke API via HTTP POST
-      // - Return Model dengan ID dari server
-      // ---------------------------------------------------------------------
+      // Kirim ke DataSource
       final result = await remoteDataSource.addUser(userModel);
-
-      // Return sebagai UserEntity
       return result;
     } catch (e) {
       throw Exception('Repository error: $e');
     }
   }
 
-  // -------------------------------------------------------------------------
-  // GET CITIES
-  // -------------------------------------------------------------------------
-
-  /// Mendapatkan semua kota
-  ///
-  /// Sama seperti getUsers, tapi untuk data kota
   @override
   Future<List<CityEntity>> getCities() async {
     try {
