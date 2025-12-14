@@ -5,6 +5,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../../config/api_config.dart';
+import '../../../../config/api_logger.dart';
 import '../models/user_model.dart';
 import '../models/city_model.dart';
 
@@ -29,6 +30,13 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
         headers: {'Content-Type': 'application/json'},
       );
 
+      // Menggunakan ApiLogger untuk logging yang konsisten
+      ApiLogger.logComplete(
+        method: 'GET',
+        url: ApiConfig.userUrl,
+        response: response,
+      );
+
       if (response.statusCode == 200) {
         final List<dynamic> jsonList = json.decode(response.body);
         return jsonList.map((json) => UserModel.fromJson(json)).toList();
@@ -49,6 +57,14 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
         body: json.encode(user.toJson()),
       );
 
+      // Menggunakan ApiLogger untuk logging yang konsisten
+      ApiLogger.logComplete(
+        method: 'POST',
+        url: ApiConfig.userUrl,
+        response: response,
+        requestBody: json.encode(user.toJson()),
+      );
+
       if (response.statusCode == 201 || response.statusCode == 200) {
         return UserModel.fromJson(json.decode(response.body));
       } else {
@@ -65,6 +81,13 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
       final response = await client.get(
         Uri.parse(ApiConfig.cityUrl),
         headers: {'Content-Type': 'application/json'},
+      );
+
+      // Menggunakan ApiLogger untuk logging yang konsisten
+      ApiLogger.logComplete(
+        method: 'GET',
+        url: ApiConfig.cityUrl,
+        response: response,
       );
 
       if (response.statusCode == 200) {
